@@ -9,7 +9,9 @@ import (
 	"io"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -56,7 +58,11 @@ func main() {
 
 	flag.VisitAll(func(f *flag.Flag) {
 		if f.Value.String() == "" {
-			fmt.Println(os.Args[0] + " --loadOrder ./loadOrder.txt" + " --dataFiles  \"/home/tes3mp/Data Files\"")
+			if runtime.GOOS == "windows" {
+				fmt.Println(os.Args[0] + " --loadOrder ./loadOrder.txt" + " --dataFiles \"C:\\games\\TES3MP\\Data Files\"")
+			} else {
+				fmt.Println(os.Args[0] + " --loadOrder ./loadOrder.txt" + " --dataFiles  \"/home/tes3mp/Data Files\"")
+			}
 			os.Exit(1)
 		}
 	})
@@ -70,7 +76,8 @@ func main() {
 
 	scanner := bufio.NewScanner(loadOrder)
 	for scanner.Scan() {
-		file := *dataFileFlag + scanner.Text()
+		file := path.Join(*dataFileFlag, scanner.Text())
+
 		hash, err := hashFileCRC32(file, 0xedb88320)
 		if err == nil {
 			fmt.Println(filepath.Base(file) + ": " + "0x" + strings.ToUpper(hash))
