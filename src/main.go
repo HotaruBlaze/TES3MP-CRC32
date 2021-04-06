@@ -3,15 +3,11 @@ package main
 import (
 	"bufio"
 	"encoding/hex"
-	"flag"
 	"fmt"
 	"hash/crc32"
 	"io"
-	"log"
 	"os"
-	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -51,40 +47,39 @@ func hashFileCRC32(filePath string, polynomial uint32) (string, error) {
 }
 
 func main() {
-	loadOrderFlag := flag.String("loadOrder", "", "Load order file")
-	dataFileFlag := flag.String("dataFiles", "", "Data Files Directory")
+	var validFiles []string
+	dirname := "." + string(filepath.Separator) + "Data Files" + string(filepath.Separator)
 
-	flag.Parse()
+	d, err := os.Open(dirname)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	defer d.Close()
 
-	flag.VisitAll(func(f *flag.Flag) {
-		if f.Value.String() == "" {
-			if runtime.GOOS == "windows" {
-				fmt.Println(os.Args[0] + " --loadOrder ./loadOrder.txt" + " --dataFiles \"C:\\games\\TES3MP\\Data Files\"")
-			} else {
-				fmt.Println(os.Args[0] + " --loadOrder ./loadOrder.txt" + " --dataFiles  \"/home/tes3mp/Data Files\"")
+	files, err := d.Readdir(-1)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	for _, file := range files {
+		if file.Mode().IsRegular() {
+			if filepath.Ext(file.Name()) == ".esm" || filepath.Ext(file.Name()) == ".esp" {
+				validFiles = append(validFiles, file.Name())
 			}
-			os.Exit(1)
 		}
-	})
-
-	loadOrder, loadOrdererr := os.Open(*loadOrderFlag)
-
-	if loadOrdererr != nil {
-		log.Fatal(loadOrdererr)
 	}
-	defer loadOrder.Close()
 
-	scanner := bufio.NewScanner(loadOrder)
-	for scanner.Scan() {
-		file := path.Join(*dataFileFlag, scanner.Text())
-
-		hash, err := hashFileCRC32(file, 0xedb88320)
+	for _, validFile := range validFiles {
+		validFilePath := "." + string(filepath.Separator) + "Data Files" + string(filepath.Separator) + validFile
+		hash, err := hashFileCRC32(validFilePath, 0xedb88320)
 		if err == nil {
-			fmt.Println(filepath.Base(file) + ": " + "0x" + strings.ToUpper(hash))
+			fmt.Println(filepath.Base(validFile) + ": " + "0x" + strings.ToUpper(hash))
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
+	buf := bufio.NewReader(os.Stdin)
+	fmt.Print("Press enter to close")
+	_, _ = buf.ReadBytes('\n')
 }

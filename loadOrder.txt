@@ -1,3 +1,0 @@
-Morrowind.esm
-Tribunal.esm
-Bloodmoon.esm
